@@ -1,0 +1,2 @@
+docker build -t windowsservercore-with-netfx3 windowsservercore-with-netfx3
+docker build -t mssql-server-2012-windows mssql-server-2012-windows
