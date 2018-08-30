@@ -1,0 +1,30 @@
+FROM windowsservercore-with-netfx3
+
+LABEL maintainer "Matthew Vukomanovic"
+ENV zip "http://iisfileservertest/site/en_sql_server_2012_standard_edition_with_service_pack_4_x64_dvd_100075944.zip"
+
+ENV sa_password="_" \
+    attach_dbs="[]" \
+    ACCEPT_EULA="_" \
+    sa_password_path="C:\ProgramData\Docker\secrets\sa-password"
+
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+# make install files accessible
+COPY start.ps1 /
+WORKDIR /
+
+RUN mkdir .\setup ; \
+    Invoke-WebRequest -Uri $Env:zip -OutFile .\setup\setup.zip ; \
+    Expand-Archive -Path .\setup\setup.zip -DestinationPath c:\setup ;\
+        .\setup\setup.exe /q /ACTION=Install /INSTANCENAME=MSSQLSERVER /FEATURES=SQLEngine /UPDATEENABLED=0 /SQLSVCACCOUNT='NT AUTHORITY\System' /SQLSYSADMINACCOUNTS='BUILTIN\ADMINISTRATORS' /TCPENABLED=1 /NPENABLED=0 /IACCEPTSQLSERVERLICENSETERMS ; \
+        Remove-Item -Recurse -Force .\setup
+
+RUN stop-service MSSQLSERVER ; \
+        set-itemproperty -Path 'HKLM:\Software\microsoft\microsoft sql server\MSSQL11.MSSQLSERVER\mssqlserver\supersocketnetlib\tcp\ipall' -name tcpdynamicports  -value '' ; \
+        set-itemproperty -Path 'HKLM:\Software\microsoft\microsoft sql server\MSSQL11.MSSQLSERVER\mssqlserver\supersocketnetlib\tcp\ipall' -name tcpport -value 1433 ; \
+        set-itemproperty -path 'HKLM:\Software\microsoft\microsoft sql server\MSSQL11.MSSQLSERVER\mssqlserver\' -name LoginMode -value 2 ;
+
+HEALTHCHECK CMD [ "sqlcmd", "-Q", "select 1" ]
+
+CMD .\start -sa_password $env:sa_password -ACCEPT_EULA $env:ACCEPT_EULA -attach_dbs \"$env:attach_dbs\" -Verbose
