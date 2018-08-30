@@ -1,0 +1,8 @@
+FROM microsoft/windowsservercore
+
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+RUN mkdir c:\setup ; \
+    Invoke-WebRequest -Uri http://iisfileservertest/site/microsoft-windows-netfx3-ondemand-package.cab -OutFile c:\setup\microsoft-windows-netfx3-ondemand-package.cab ; \
+    Install-WindowsFeature -Name NET-Framework-Features -Source C:\setup -Verbose ; \
+    Remove-Item -Recurse -Force c:\setup ;
